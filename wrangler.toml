@@ -2,6 +2,7 @@ name = "coachstack"
 main = "worker.js"
 compatibility_date = "2026-07-01"
 account_id = "e3507901699c196c82b78ea540a58612"
+workers_dev = true
 
 [[d1_databases]]
 binding = "DB"
