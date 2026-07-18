@@ -1,0 +1,28 @@
+name: Deploy Worker
+
+# Runs on every push to main that touches the Worker code or its config.
+# GitHub Pages auto-deploys every HTML file on every push with zero
+# manual steps; this workflow does the same for worker.js. Needs the
+# CLOUDFLARE_API_TOKEN secret set on this repo (Settings > Secrets and
+# variables > Actions) before it can actually publish -- until then this
+# job will fail, which is expected and harmless.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'worker.js'
+      - 'wrangler.toml'
+      - '.github/workflows/deploy-worker.yml'
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: deploy

@@ -1,0 +1,8 @@
+name = "coachstack"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "coachstack-db"
+database_id = "35775520-cc64-4398-92a4-c31570c6289e"

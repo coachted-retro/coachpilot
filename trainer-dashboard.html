@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="config.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1C1F26">
+<title>My Clients — CoachStack</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1C1F26;--ink2:#3D4149;--ink3:#767B87;--bg:#F7F5F1;--card:#FFFFFF;--line:#E4E1DA;--accent:#FF6B35;--accent-dk:#D9531F;--green:#2E7D5B;--green-lt:#E5F2EC;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:14px;padding-bottom:40px}
+.topbar{background:var(--ink);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}
+.wordmark{font-family:'Space Grotesk';font-weight:700;font-size:18px}
+.wordmark span{color:var(--accent)}
+.topbar .biz{font-size:12px;color:#B8BCC4}
+.wrap{max-width:600px;margin:0 auto;padding:20px 16px}
+.head-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+h1{font-family:'Space Grotesk';font-size:20px;font-weight:600}
+.add-btn{font-family:'Space Grotesk';font-size:13px;font-weight:600;background:var(--accent);color:#fff;border:none;padding:10px 16px;border-radius:9px;cursor:pointer}
+.add-btn:hover{background:var(--accent-dk)}
+.client-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.client-card:hover{border-color:var(--accent)}
+.client-name{font-weight:600;font-size:14.5px}
+.client-meta{font-size:12px;color:var(--ink3);margin-top:2px}
+.status-pill{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;padding:3px 9px;border-radius:20px;background:var(--green-lt);color:var(--green)}
+.empty{text-align:center;padding:50px 20px;color:var(--ink3)}
+.empty .e-icon{font-size:32px;margin-bottom:10px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(28,31,38,.5);align-items:center;justify-content:center;padding:20px;z-index:50}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:14px;padding:24px;max-width:420px;width:100%;max-height:90vh;overflow-y:auto}
+.modal h2{font-family:'Space Grotesk';font-size:17px;font-weight:600;margin-bottom:16px}
+.field{margin-bottom:12px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{font-size:11px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:var(--ink3);display:block;margin-bottom:6px}
+input{width:100%;border:1.5px solid var(--line);border-radius:9px;padding:10px 12px;font-family:'Inter';font-size:14px;background:#fff}
+input:focus{outline:none;border-color:var(--accent)}
+.btn-row{display:flex;gap:8px;margin-top:16px}
+.btn-primary{flex:1;font-family:'Space Grotesk';font-weight:600;font-size:14px;background:var(--ink);color:#fff;border:none;padding:12px;border-radius:9px;cursor:pointer}
+.btn-cancel{flex:1;font-family:'Space Grotesk';font-weight:600;font-size:14px;background:var(--bg);color:var(--ink2);border:1px solid var(--line);padding:12px;border-radius:9px;cursor:pointer}
+.result-box{background:var(--green-lt);border:1px solid #B9DECB;border-radius:9px;padding:12px 14px;margin-top:14px;font-size:12.5px;display:none}
+.result-box b{color:var(--green)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="wordmark">Coach<span>Stack</span></div>
+  <div class="biz" id="bizName"></div>
+</div>
+<div class="wrap">
+  <div class="head-row">
+    <h1>My Clients</h1>
+    <button class="add-btn" onclick="openAddModal()">+ Add Client</button>
+  </div>
+  <div id="clientList"></div>
+</div>
+
+<div class="modal-overlay" id="addModalOverlay">
+  <div class="modal">
+    <h2>Add a Client</h2>
+    <div class="field">
+      <label>First Name</label>
+      <input type="text" id="cFirst">
+    </div>
+    <div class="field">
+      <label>Last Name</label>
+      <input type="text" id="cLast">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="cEmail">
+      </div>
+      <div class="field">
+        <label>Phone</label>
+        <input type="tel" id="cPhone">
+      </div>
+    </div>
+    <div class="field">
+      <label>Goal (optional)</label>
+      <input type="text" id="cGoal" placeholder="e.g. Build muscle, lose fat">
+    </div>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
+      <button class="btn-primary" onclick="submitAddClient()">Add Client</button>
+    </div>
+    <div class="result-box" id="addResult"></div>
+  </div>
+</div>
+
+<script>
+const WORKER = COACHSTACK_WORKER_URL;
+let SESSION = null;
+(function(){
+  const saved = localStorage.getItem('coachstack_trainer_session');
+  if (!saved) { location.href = 'trainer-login.html'; return; }
+  try { SESSION = JSON.parse(saved); } catch(e) { location.href = 'trainer-login.html'; return; }
+  document.getElementById('bizName').textContent = SESSION.business_name || '';
+  loadClients();
+})();
+
+async function loadClients(){
+  const listEl = document.getElementById('clientList');
+  try {
+    const r = await fetch(WORKER + '/trainer/clients?token=' + encodeURIComponent(SESSION.token));
+    const d = await r.json();
+    if (!d.ok) { location.href = 'trainer-login.html'; return; }
+    const clients = d.clients || [];
+    if (!clients.length) {
+      listEl.innerHTML = `<div class="empty"><div class="e-icon">👋</div>No clients yet — add your first one to get started.</div>`;
+      return;
+    }
+    listEl.innerHTML = clients.map(c => `
+      <div class="client-card" onclick="location.href='client-detail.html?id=${c.id}'">
+        <div>
+          <div class="client-name">${esc(c.first_name)} ${esc(c.last_name || '')}</div>
+          <div class="client-meta">${esc(c.goal_primary || 'No goal set')}${c.email ? ' · ' + esc(c.email) : ''}</div>
+        </div>
+        <div class="status-pill">${esc(c.status)}</div>
+      </div>`).join('');
+  } catch(e) {
+    listEl.innerHTML = `<div class="empty">Couldn't load your clients — check your connection and refresh.</div>`;
+  }
+}
+
+function openAddModal(){
+  document.getElementById('cFirst').value = '';
+  document.getElementById('cLast').value = '';
+  document.getElementById('cEmail').value = '';
+  document.getElementById('cPhone').value = '';
+  document.getElementById('cGoal').value = '';
+  document.getElementById('addResult').style.display = 'none';
+  document.getElementById('addModalOverlay').classList.add('open');
+}
+function closeAddModal(){
+  document.getElementById('addModalOverlay').classList.remove('open');
+  loadClients();
+}
+
+async function submitAddClient(){
+  const first_name = document.getElementById('cFirst').value.trim();
+  const last_name = document.getElementById('cLast').value.trim();
+  const email = document.getElementById('cEmail').value.trim();
+  const phone = document.getElementById('cPhone').value.trim();
+  const goal_primary = document.getElementById('cGoal').value.trim();
+  if (!first_name) { alert('First name is required.'); return; }
+  if (!email && !phone) { alert('Email or phone is required.'); return; }
+  try {
+    const r = await fetch(WORKER + '/trainer/clients/add', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ token: SESSION.token, first_name, last_name: last_name || null, email: email || null, phone: phone || null, goal_primary: goal_primary || null })
+    });
+    const d = await r.json();
+    if (!d.ok) { alert(d.error || 'Could not add client.'); return; }
+    const resultBox = document.getElementById('addResult');
+    if (d.temp_password) {
+      resultBox.innerHTML = `Client added. Share their login with them directly — email: <b>${esc(email)}</b>, temporary password: <b>${esc(d.temp_password)}</b>`;
+    } else {
+      resultBox.innerHTML = `Client added. Add an email later to give them their own login.`;
+    }
+    resultBox.style.display = 'block';
+  } catch(e) {
+    alert('Connection error, try again.');
+  }
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>

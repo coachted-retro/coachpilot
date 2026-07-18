@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="config.js"></script>
+<script src="bundles-library.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1C1F26">
+<title>Client Detail — CoachStack</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1C1F26;--ink2:#3D4149;--ink3:#767B87;--bg:#F7F5F1;--card:#FFFFFF;--line:#E4E1DA;--accent:#FF6B35;--accent-dk:#D9531F;--green:#2E7D5B;--green-lt:#E5F2EC;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:14px;padding-bottom:40px}
+.topbar{background:var(--ink);color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px}
+.back-btn{background:none;border:none;color:#fff;font-size:18px;cursor:pointer}
+.wordmark{font-family:'Space Grotesk';font-weight:700;font-size:16px}
+.wordmark span{color:var(--accent)}
+.wrap{max-width:600px;margin:0 auto;padding:20px 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:14px}
+h1{font-family:'Space Grotesk';font-size:20px;font-weight:600;margin-bottom:2px}
+.sub{font-size:12.5px;color:var(--ink3)}
+.section-label{font-family:'Space Grotesk';font-size:12px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:var(--ink3);margin-bottom:10px}
+.current-program{background:var(--green-lt);border:1px solid #B9DECB;border-radius:10px;padding:12px 14px;margin-bottom:12px}
+.current-program b{color:var(--green)}
+select{width:100%;border:1.5px solid var(--line);border-radius:9px;padding:11px 12px;font-family:'Inter';font-size:14px;background:#fff;margin-bottom:10px}
+.btn-primary{font-family:'Space Grotesk';font-weight:600;font-size:14px;background:var(--ink);color:#fff;border:none;padding:12px 18px;border-radius:9px;cursor:pointer}
+.btn-primary:hover{background:var(--accent-dk)}
+.log-row{border-bottom:1px solid var(--line);padding:10px 0;font-size:13px}
+.log-row:last-child{border-bottom:none}
+.log-date{font-weight:600}
+.log-meta{color:var(--ink3);font-size:12px}
+.empty{color:var(--ink3);font-size:13px;padding:10px 0}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <button class="back-btn" onclick="location.href='trainer-dashboard.html'">←</button>
+  <div class="wordmark">Coach<span>Stack</span></div>
+</div>
+<div class="wrap">
+  <div class="card">
+    <h1 id="clientName">Loading...</h1>
+    <div class="sub" id="clientMeta"></div>
+  </div>
+
+  <div class="card" id="currentProgramCard" style="display:none">
+    <div class="section-label">Current Program</div>
+    <div class="current-program" id="currentProgramBox"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-label">Assign a Program</div>
+    <select id="bundlePicker"><option value="">-- Choose a program --</option></select>
+    <button class="btn-primary" onclick="assignProgram()">Assign This Program</button>
+  </div>
+
+  <div class="card">
+    <div class="section-label">Recent Workout Logs</div>
+    <div id="logList"></div>
+  </div>
+</div>
+
+<script>
+const WORKER = COACHSTACK_WORKER_URL;
+let SESSION = null;
+const params = new URLSearchParams(location.search);
+const clientId = params.get('id');
+
+(function(){
+  const saved = localStorage.getItem('coachstack_trainer_session');
+  if (!saved) { location.href = 'trainer-login.html'; return; }
+  try { SESSION = JSON.parse(saved); } catch(e) { location.href = 'trainer-login.html'; return; }
+  if (!clientId) { location.href = 'trainer-dashboard.html'; return; }
+  populateBundlePicker();
+  loadClientDetail();
+})();
+
+function populateBundlePicker(){
+  const sel = document.getElementById('bundlePicker');
+  BUNDLES.forEach(b => {
+    const opt = document.createElement('option');
+    opt.value = b.id;
+    opt.textContent = b.icon + ' ' + b.name + ' (' + b.days + ')';
+    sel.appendChild(opt);
+  });
+}
+
+async function loadClientDetail(){
+  try {
+    const r = await fetch(WORKER + '/trainer/client-detail?token=' + encodeURIComponent(SESSION.token) + '&client_id=' + clientId);
+    const d = await r.json();
+    if (!d.ok) { alert(d.error || 'Could not load client.'); location.href = 'trainer-dashboard.html'; return; }
+    const c = d.client;
+    document.getElementById('clientName').textContent = c.first_name + ' ' + (c.last_name || '');
+    document.getElementById('clientMeta').textContent = [c.goal_primary, c.email, c.phone].filter(Boolean).join(' · ') || 'No details on file';
+
+    const activeProgram = (d.programs || []).find(p => p.active);
+    if (activeProgram) {
+      document.getElementById('currentProgramCard').style.display = 'block';
+      document.getElementById('currentProgramBox').innerHTML = `<b>${esc(activeProgram.bundle_name)}</b><br>Assigned ${new Date(activeProgram.assigned_at).toLocaleDateString()}`;
+    }
+
+    const logs = d.logs || [];
+    const logListEl = document.getElementById('logList');
+    if (!logs.length) {
+      logListEl.innerHTML = `<div class="empty">No workouts logged yet.</div>`;
+    } else {
+      logListEl.innerHTML = logs.map(l => `
+        <div class="log-row">
+          <div class="log-date">${new Date(l.log_date).toLocaleDateString()}</div>
+          <div class="log-meta">${esc(l.routine_label || 'Workout')}</div>
+        </div>`).join('');
+    }
+  } catch(e) {
+    alert('Connection error loading client.');
+  }
+}
+
+async function assignProgram(){
+  const bundleId = document.getElementById('bundlePicker').value;
+  if (!bundleId) { alert('Choose a program first.'); return; }
+  const bundle = BUNDLES.find(b => b.id === bundleId);
+  try {
+    const r = await fetch(WORKER + '/trainer/assign-program', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ token: SESSION.token, client_id: parseInt(clientId,10), bundle_id: bundle.id, bundle_name: bundle.name })
+    });
+    const d = await r.json();
+    if (!d.ok) { alert(d.error || 'Could not assign program.'); return; }
+    loadClientDetail();
+  } catch(e) {
+    alert('Connection error, try again.');
+  }
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>
