@@ -1,10 +1,8 @@
 name = "coachpilot"
 main = "worker.js"
-compatibility_date = "2026-07-01"
-account_id = "e3507901699c196c82b78ea540a58612"
-workers_dev = true
+compatibility_date = "2024-01-01"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "coachstack-db"
-database_id = "35775520-cc64-4398-92a4-c31570c6289e"
+database_name = "coachpilot-db"
+database_id = "REPLACE_WITH_YOUR_D1_ID"
