@@ -47,6 +47,27 @@ export default {
 
     if (method === 'OPTIONS') return new Response('', { headers: CORS });
 
+    // ── LANDING PAGE ─────────────────────────────────────────────
+    if ((path === '/' || path === '') && method === 'GET') {
+      // Fetch and serve the landing page from GitHub Pages
+      const landing = await fetch('https://coachted-retro.github.io/coachpilot/index.html');
+      const html = await landing.text();
+      return new Response(html, {
+        headers: { 'Content-Type': 'text/html;charset=utf-8', 'Cache-Control': 'public,max-age=300' }
+      });
+    }
+
+    // ── APP ROUTE ─────────────────────────────────────────────────
+    if (path === '/app' && method === 'GET') {
+      const appPage = await fetch('https://coachted-retro.github.io/coachpilot/index.html');
+      const html = await appPage.text();
+      return new Response(html, {
+        headers: { 'Content-Type': 'text/html;charset=utf-8' }
+      });
+    }
+
+
+
     // ── AUTH ROUTES ─────────────────────────────────────────────────────────
 
     // POST /auth/request — send magic link
